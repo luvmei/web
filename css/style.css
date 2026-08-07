@@ -13,7 +13,6 @@ button { cursor:pointer; }
 .dashboard-background.active { opacity:1; }
 .bg-battle { background-image:linear-gradient(90deg,rgba(2,8,20,.76) 0%,rgba(2,8,20,.54) 40%,rgba(2,8,20,.16) 72%,rgba(2,8,20,.38) 100%),url('../assets/space-scene-capital-ship.png'); }
 .bg-warp { background-image:linear-gradient(90deg,rgba(2,8,20,.76) 0%,rgba(2,8,20,.54) 40%,rgba(2,8,20,.16) 72%,rgba(2,8,20,.38) 100%),url('../assets/space-scene-fighter-battle.png'); }
-.bg-orbit { background-image:linear-gradient(90deg,rgba(2,8,20,.76) 0%,rgba(2,8,20,.54) 40%,rgba(2,8,20,.16) 72%,rgba(2,8,20,.38) 100%),url('../assets/space-scene-warp-front.png'); }
 .battle-effects { position:fixed; z-index:-1; inset:0; overflow:hidden; pointer-events:none; opacity:0; transition:opacity .8s ease; }.is-logged-in .battle-effects { opacity:1; }
 .battle-laser { position:absolute; width:19vw; min-width:180px; height:2px; border-radius:999px; background:linear-gradient(90deg,transparent 0%,rgba(126,227,255,.1) 12%,#d6f9ff 48%,#44bdff 72%,transparent 100%); box-shadow:0 0 7px #83eaff,0 0 17px rgba(47,177,255,.78); opacity:0; transform:rotate(-27deg) scaleX(.25); transform-origin:right center; }.laser-one { top:16%;left:68%;animation:laserVolley 5.8s 1.1s linear infinite; }.laser-two { top:35%;left:75%;width:13vw;background:linear-gradient(90deg,transparent,#fff1c5 40%,#ff9d40 70%,transparent);box-shadow:0 0 7px #ffd188,0 0 17px rgba(255,102,41,.72);animation:laserVolley 7.2s 3.5s linear infinite; }.laser-three { top:55%;left:70%;width:16vw;transform:rotate(-18deg) scaleX(.25);animation:laserVolley 6.5s 4.8s linear infinite; }
 .battle-blast { position:absolute;width:48px;height:48px;border-radius:50%;opacity:0;filter:blur(.5px);background:radial-gradient(circle,#fff7bd 0 7%,#ffca5a 14%,#ed6e2c 34%,rgba(237,72,28,.28) 54%,transparent 73%);box-shadow:0 0 22px rgba(255,134,43,.72); }.blast-one { top:20%;right:7%;animation:battleBlast 4.6s .8s ease-out infinite; }.blast-two { top:43%;right:12%;width:33px;height:33px;animation:battleBlast 6.1s 3.1s ease-out infinite; }
@@ -242,6 +241,16 @@ video.dashboard-background { filter:brightness(.64) saturate(.88) contrast(1.06)
 .login-card .launch-button::after { content:"";position:absolute;top:0;bottom:0;left:-35%;width:25%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:loginConsoleScan 3.8s ease-in-out infinite; }
 @keyframes loginConsoleScan { 0%,54% { transform:translateX(0) skewX(-18deg);opacity:0; } 62% { opacity:1; } 82%,100% { transform:translateX(560%) skewX(-18deg);opacity:0; } }
 @media (max-height:760px) { .login-card { padding-bottom:33px; }.login-card::after,.system-readout { display:none; } }
+
+/* 모바일 로그인 패널은 중앙 정렬 대신 상단 기준으로 배치해 불필요한 상단 여백을 줄입니다. */
+@media (max-width:760px) {
+  .login-screen {
+    min-height:100svh;
+    justify-content:flex-start;
+    padding-top:clamp(64px,9vh,92px);
+    padding-bottom:138px;
+  }
+}
 
 /* 함교 통신 단말형 1:1 문의 버튼 */
 .support-button { right:28px;bottom:26px;width:134px;height:76px;border:1px solid rgba(135,226,255,.76);border-radius:0;background:linear-gradient(135deg,rgba(4,23,51,.95),rgba(7,76,110,.91));clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px),0 10px);box-shadow:0 0 0 1px rgba(143,230,255,.1) inset,0 0 20px rgba(26,176,242,.29),0 10px 31px rgba(0,42,75,.55);justify-content:flex-start;gap:10px;padding:8px 12px;animation:terminalPulse 3s ease-in-out infinite; }
@@ -494,6 +503,111 @@ video.dashboard-background { filter:brightness(.64) saturate(.88) contrast(1.06)
 @keyframes commandReady { to { opacity:.38;box-shadow:0 0 3px #76ffc5; } }
 @media (max-width:760px) { .game-start-status { display:none!important; }.game-start-copy { bottom:4px; }.game-start-copy small { font-size:6px;letter-spacing:.14em; } }
 
+/* 모바일 홈 화면 밀도 조정 */
+@media (max-width:760px) {
+  .topbar { padding-left:10px;padding-right:10px;gap:0; }
+  .brand { margin-right:auto; }
+  .shortcut-button { order:2;margin-left:auto;width:46px;height:46px;padding:0;display:grid;place-items:center;font-size:0; }
+  .shortcut-button .download-glyph { margin:0;font-size:25px;line-height:1; }
+  .nav-menu { order:3; }
+
+  .dashboard { padding-top:16px;padding-bottom:34px; }
+  .hero-carousel { margin-top:0; }
+
+  .dashboard-grid { gap:12px; }
+  .notice-panel,.ticker-panel { min-height:0;height:auto; }
+  .notice-panel .panel-heading,.ticker-panel .panel-heading { padding:14px 15px 11px; }
+  .notice-panel .panel-heading h3,.ticker-panel .panel-heading h3 { font-size:17px; }
+  .notice-panel .panel-kicker,.ticker-panel .panel-kicker { margin-bottom:4px;font-size:7px; }
+  .notice-panel .text-link { font-size:13px; }
+  #homeNotices .notice-item { grid-template-columns:auto minmax(0,1fr) auto;padding:12px 15px;gap:8px; }
+  #homeNotices .priority { font-size:8px; }
+  #homeNotices .notice-title { font-size:13px; }
+  #homeNotices .notice-date { grid-column:auto;font-size:10px;white-space:nowrap; }
+  .ticker-window { height:142px; }
+  .withdrawal-ticker li { padding:10px 15px;font-size:12px; }
+  .withdrawal-ticker small { font-size:10px; }
+  .withdrawal-ticker strong { font-size:10px; }
+}
+
+/* Mobile controls stay compact so they do not cover the live panels. */
+@media (max-width:760px) {
+  .shortcut-button {
+    position:relative;
+    width:44px;
+    height:44px;
+    align-self:center;
+    margin-right:2px;
+    border-color:rgba(117,226,255,.85);
+    background:linear-gradient(145deg,rgba(5,27,57,.98),rgba(8,85,128,.82));
+    clip-path:polygon(7px 0,calc(100% - 7px) 0,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0 calc(100% - 7px),0 7px);
+    box-shadow:inset 0 0 0 1px rgba(183,244,255,.18),inset 0 0 14px rgba(61,189,241,.12),0 4px 13px rgba(0,0,0,.38),0 0 12px rgba(36,183,241,.2);
+  }
+  .shortcut-button::before {
+    content:"";
+    position:absolute;
+    inset:5px;
+    border:1px solid rgba(174,238,255,.42);
+    clip-path:inherit;
+    pointer-events:none;
+  }
+  .shortcut-button .download-glyph {
+    position:relative;
+    z-index:1;
+    display:block;
+    width:22px;
+    height:24px;
+    font-size:0;
+    background:linear-gradient(#d6f7ff,#9ce9ff) center 2px/2px 15px no-repeat;
+    filter:drop-shadow(0 0 5px rgba(86,216,255,.82));
+  }
+  .shortcut-button .download-glyph::before {
+    content:"";
+    position:absolute;
+    top:10px;
+    left:50%;
+    width:9px;
+    height:9px;
+    border-right:2px solid #d6f7ff;
+    border-bottom:2px solid #d6f7ff;
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .shortcut-button .download-glyph::after { display:none; }
+
+  .bgm-toggle,
+  .support-button {
+    bottom:8px;
+    width:76px;
+    height:86px;
+    gap:3px;
+  }
+  .support-button { right:6px; }
+  .bgm-toggle { right:84px; }
+  .bgm-orb,
+  .support-terminal {
+    width:42px;
+    height:42px;
+    flex-basis:42px;
+  }
+  .bgm-orb::before,
+  .support-terminal::before { width:30px;height:30px; }
+  .bgm-orb::after,
+  .support-terminal::after { left:20px;top:3px;height:17px; }
+  .bgm-toggle::before,
+  .support-button::before { inset:4px 15px 31px; }
+  .bgm-icon { font-size:18px; }
+  .bgm-label,
+  .support-copy b { font-size:11px; }
+
+  /* 카드의 세로 길이와 중심을 모바일 캐러셀 배너(173px)에 맞춥니다. */
+  .radio-comms {
+    top:72svh;
+    width:155px;
+    height:207px;
+    aspect-ratio:3 / 4;
+  }
+}
+
 /* 공격 권한이 활성화된 최우선 함대 명령 프레임 */
 .game-start-button { border-color:#c99118;box-shadow:0 0 0 1px rgba(255,190,117,.2) inset,0 0 0 5px rgba(61,10,17,.2) inset,0 16px 34px rgba(0,0,0,.72),0 0 31px rgba(230,65,54,.34); }
 .game-start-button::before { border-color:rgba(255,132,96,.88);background:linear-gradient(90deg,rgba(255,102,78,.78),rgba(255,180,108,.12) 13%,transparent 23% 77%,rgba(255,180,108,.12) 87%,rgba(255,102,78,.78));box-shadow:inset 0 1px rgba(255,226,192,.36),inset 0 -1px rgba(211,45,42,.32),0 0 18px rgba(255,78,60,.35);animation:attackFramePulse 1.45s ease-in-out infinite alternate; }
@@ -507,3 +621,68 @@ video.dashboard-background { filter:brightness(.64) saturate(.88) contrast(1.06)
 /* 절개 모서리의 빈 공간 없이 버튼 전체를 감싸는 공격 프레임 */
 .game-start-button,.game-start-button::before { clip-path:none; }
 .game-start-button::before { inset:4px; }
+
+/* 모바일 홈 화면 설치 안내 */
+.install-dialog {
+  position:relative;
+  width:min(420px,calc(100vw - 38px));
+  padding:30px;
+  border:1px solid rgba(121,221,255,.82);
+  color:#e6f7ff;
+  background:linear-gradient(135deg,rgba(4,18,41,.98),rgba(7,47,76,.96));
+  box-shadow:0 0 0 1px rgba(190,242,255,.1) inset,0 22px 75px rgba(0,0,0,.78),0 0 38px rgba(42,178,238,.2);
+}
+.install-dialog::backdrop { background:rgba(1,6,18,.76);backdrop-filter:blur(6px); }
+.install-dialog h2 { margin:7px 0 14px;font-size:28px; }
+.install-dialog p:not(.panel-kicker) { margin:0;color:#d2e7f4;font-size:16px;line-height:1.65; }
+.install-dialog strong { color:#8de7ff; }
+.install-dialog .install-dialog-note { margin-top:11px;color:#8fb1c5;font-size:13px; }
+.install-confirm { display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:24px;font-family:var(--font-korean);font-size:15px;font-weight:800; }
+.install-confirm span { font:700 20px/1 var(--font-display); }
+@media (max-width:760px) {
+  .install-dialog { width:calc(100vw - 34px);padding:25px 22px; }
+  .install-dialog h2 { font-size:24px; }
+  .install-dialog p:not(.panel-kicker) { font-size:15px; }
+  .install-dialog .install-dialog-note { font-size:12px; }
+}
+
+/* 출금 패널도 공지사항과 동일하게 상세 화면으로 진입합니다. */
+.panel-actions { display:flex;align-items:center;gap:14px; }
+@media (max-width:760px) {
+  .panel-actions { gap:9px; }
+  .ticker-panel .panel-actions .text-link { font-size:13px; }
+  .ticker-panel .panel-actions .live-tag { font-size:7px; }
+}
+
+/* 출격 영상의 하단 안내는 모바일에서도 서로 겹치지 않고 한 줄로 읽힙니다. */
+@media (max-width:760px) {
+  .launch-skip { bottom:14vh; }
+  .launch-message {
+    bottom:22vh;
+    width:calc(100vw - 34px);
+    max-width:none;
+    font-size:clamp(8.8px,2.45vw,10px);
+    letter-spacing:.065em;
+    white-space:nowrap;
+  }
+}
+
+/* 모바일 하단 제어부와 겹치는 마지막 상태값은 숨깁니다. */
+@media (max-width:760px) {
+  .system-readout span:nth-last-child(-n + 2) { display:none; }
+  .is-launching .bgm-toggle,
+  .is-launching .support-button {
+    opacity:0;
+    pointer-events:none;
+  }
+}
+
+/* 패널은 제거하고, 두 원형 아이콘 자체에만 대비용 그림자를 남깁니다. */
+@media (max-width:760px) {
+  .bgm-orb,
+  .support-terminal {
+    box-shadow:0 6px 15px rgba(0,0,0,.76),0 0 14px rgba(84,219,255,.55),inset 0 0 10px rgba(135,244,255,.38);
+  }
+  .bgm-label,
+  .support-copy b { text-shadow:0 2px 6px #000,0 0 7px rgba(83,215,255,.45); }
+}

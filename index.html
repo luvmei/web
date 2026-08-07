@@ -4,8 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#050914" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>우주전함 야마토</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Noto+Sans+KR:wght@500;600;700;800&family=Orbitron:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -35,6 +39,18 @@
       </div>
       <audio id="mainBgm" loop preload="auto">
         <source src="assets/audio/yamato_bgm.mp3" type="audio/mpeg" />
+      </audio>
+      <audio id="analyzerSfx" preload="auto">
+        <source src="assets/audio/processing-r2d2.mp3" type="audio/mpeg" />
+      </audio>
+      <audio id="radioSfx" preload="auto">
+        <source src="assets/audio/communication.mp3" type="audio/mpeg" />
+      </audio>
+      <audio id="fleetSfx" preload="metadata">
+        <source src="assets/audio/battleship.mp3" type="audio/mpeg" />
+      </audio>
+      <audio id="fighterSfx" preload="auto">
+        <source src="assets/audio/fighter.mp3" type="audio/mpeg" />
       </audio>
       <div class="battle-effects" aria-hidden="true">
         <span class="battle-laser laser-one"></span>
@@ -131,7 +147,7 @@
             <button class="nav-link" data-view="notices">공지사항</button>
             <button class="nav-link" data-view="withdrawals">출금내역</button>
           </nav>
-          <button id="shortcutDownload" class="shortcut-button"><span class="download-glyph">↓</span> 바로가기 다운로드</button>
+          <button id="shortcutDownload" class="shortcut-button" aria-label="바로가기 다운로드" title="바로가기 다운로드"><span class="download-glyph">↓</span> 바로가기 다운로드</button>
         </header>
 
         <div class="dashboard">
@@ -169,7 +185,7 @@
                 <ul id="homeNotices" class="notice-list"></ul>
               </article>
               <article class="panel ticker-panel">
-                <div class="panel-heading"><div><p class="panel-kicker">LIVE LOG</p><h3>실시간 출금내역</h3></div><span class="live-tag"><i></i>LIVE</span></div>
+                <div class="panel-heading"><div><p class="panel-kicker">LIVE LOG</p><h3>실시간 출금내역</h3></div><div class="panel-actions"><span class="live-tag"><i></i>LIVE</span><button class="text-link" data-view="withdrawals">전체 보기 <span>→</span></button></div></div>
                 <div class="ticker-window"><ul id="homeWithdrawalTicker" class="withdrawal-ticker"></ul></div>
               </article>
             </div>
@@ -216,6 +232,14 @@
         <span class="support-copy"><small>COMMAND LINK</small><b>1:1 문의</b></span>
       </button>
       <dialog id="supportDialog" class="support-dialog"><button class="dialog-close" aria-label="닫기">×</button><p class="panel-kicker">DIRECT CHANNEL</p><h2>1:1 문의</h2><p>문의 채널은 준비 중입니다.<br />운영 담당자에게 전달할 내용을 남겨주세요.</p><textarea placeholder="문의 내용을 입력하세요."></textarea><button class="launch-button dialog-send" type="button">문의 전송</button></dialog>
+      <dialog id="installDialog" class="install-dialog" aria-labelledby="installDialogTitle">
+        <button id="installDialogClose" class="dialog-close" type="button" aria-label="바로가기 설치 창 닫기">×</button>
+        <p class="panel-kicker">FLEET TERMINAL // HOME SCREEN</p>
+        <h2 id="installDialogTitle">바로가기 설치</h2>
+        <p>스마트폰 바탕화면에 <strong>우주전함 야마토</strong> 바로가기를 설치합니다.</p>
+        <p class="install-dialog-note">설치 후에는 브라우저 주소창 없이 독립된 함대 관제 화면으로 바로 실행할 수 있습니다.</p>
+        <button id="installConfirm" class="launch-button install-confirm" type="button">설치 진행 <span>→</span></button>
+      </dialog>
       <div id="toast" class="toast" role="status"></div>
     </div>
     <script src="js/app.js"></script>

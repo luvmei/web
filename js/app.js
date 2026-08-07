@@ -32,6 +32,9 @@ const audioFadeDuration = 1.5;
 const backgroundSlides = [...document.querySelectorAll('.dashboard-background')];
 const backgroundVideos = backgroundSlides.filter((slide) => slide.tagName === 'VIDEO');
 const backgroundCycleDuration = 12000;
+// 통신·함대·전투기·애널라이저의 무작위 자동 등장 여부입니다.
+// 필요 시 true로 변경하면 기존 연출 스케줄을 다시 사용합니다.
+const autoCinematicEffectsEnabled = true;
 const radioCommsTeam = $('#radioCommsTeam');
 const radioCommsRival = $('#radioCommsRival');
 const analyzerBot = $('#analyzerBot');
@@ -39,6 +42,10 @@ const fleetFlyby = $('#fleetFlyby');
 const fleetFlybyShip = $('#fleetFlybyShip');
 const fighterFormation = $('#fighterFormation');
 const mainBgm = $('#mainBgm');
+const analyzerSfx = $('#analyzerSfx');
+const radioSfx = $('#radioSfx');
+const fleetSfx = $('#fleetSfx');
+const fighterSfx = $('#fighterSfx');
 const bgmToggle = $('#bgmToggle');
 const teamRadioCard = radioCommsTeam.querySelector('.radio-card');
 const rivalRadioCard = radioCommsRival.querySelector('.radio-card');
@@ -73,20 +80,18 @@ let backgroundCycleTimer;
 let activeBackgroundIndex = 0;
 let heroCarouselTimer;
 let activeHeroBanner = 0;
-let radioTimer;
 let radioHideTimer;
 let radioSecondTimer;
 let radioStarted = false;
-let analyzerTimer;
 let analyzerHideTimer;
 let analyzerStarted = false;
-let fleetFlybyTimer;
 let fleetFlybyHideTimer;
 let fleetFlybyStarted = false;
-let fighterFormationTimer;
 let fighterFormationHideTimer;
 let fighterFormationStarted = false;
 let activeAmbientEffect = null;
+let cinematicTimer;
+let lastCinematicEffect = null;
 let isBgmEnabled = true;
 const fleetShips = [
   { src: 'assets/fleet-ships/fleet-navy-cruiser.png', glow: '#52d5ff' },
@@ -105,6 +110,113 @@ const fighterModels = [
 ];
 const analyzerDanceMinDuration = 13000;
 const analyzerDanceMaxDuration = 19000;
+const cinematicSoundClips = {
+  radio: { audio: radioSfx, start: 0, end: 2.6, volume: 0.15 },
+  analyzer: { audio: analyzerSfx, start: 0, end: 2.8, volume: 0.1 },
+  fleet: { audio: fleetSfx, start: 0.2, end: 4.2, volume: 0.3, repeats: 2, fadeOut: 0.1 },
+  fighters: { audio: fighterSfx, start: 0.1, end: 2.4, volume: 0.3, fadeOut: 1.05 },
+};
+const cinematicSoundTimers = new WeakMap();
+const cinematicSoundGains = new WeakMap();
+let cinematicAudioContext;
+
+function prepareCinematicAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!cinematicAudioContext) {
+    cinematicAudioContext = new AudioContextClass();
+    const compressor = cinematicAudioContext.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 18;
+    compressor.ratio.value = 6;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.24;
+    compressor.connect(cinematicAudioContext.destination);
+
+    Object.values(cinematicSoundClips).forEach(({ audio }) => {
+      if (!audio) return;
+      const source = cinematicAudioContext.createMediaElementSource(audio);
+      const gain = cinematicAudioContext.createGain();
+      gain.gain.value = 0.0001;
+      source.connect(gain).connect(compressor);
+      cinematicSoundGains.set(audio, gain);
+    });
+  }
+  if (cinematicAudioContext.state === 'suspended') cinematicAudioContext.resume().catch(() => {});
+  return cinematicAudioContext;
+}
+
+function clearCinematicSoundTimers(audio) {
+  const timers = cinematicSoundTimers.get(audio);
+  if (!timers) return;
+  window.clearTimeout(timers.stop);
+  window.clearTimeout(timers.fade);
+  timers.replays?.forEach((timer) => window.clearTimeout(timer));
+}
+
+function setCinematicSoundLevel(audio, volume, fadeDuration = 0) {
+  const gain = cinematicSoundGains.get(audio);
+  const context = cinematicAudioContext;
+  if (!gain || !context) {
+    audio.volume = volume;
+    return;
+  }
+  const now = context.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+  if (fadeDuration) gain.gain.linearRampToValueAtTime(0.0001, now + fadeDuration);
+  else gain.gain.linearRampToValueAtTime(volume, now + 0.015);
+}
+
+function stopCinematicSound(audio, startTime = 0) {
+  if (!audio) return;
+  clearCinematicSoundTimers(audio);
+  audio.pause();
+  audio.currentTime = startTime;
+  const gain = cinematicSoundGains.get(audio);
+  if (gain && cinematicAudioContext) {
+    gain.gain.cancelScheduledValues(cinematicAudioContext.currentTime);
+    gain.gain.setValueAtTime(0.0001, cinematicAudioContext.currentTime);
+  }
+}
+
+function playCinematicSound(effectName) {
+  if (!isBgmEnabled) return;
+  const clip = cinematicSoundClips[effectName];
+  if (!clip?.audio) return;
+  const { audio, start, end, volume } = clip;
+  prepareCinematicAudio();
+  stopCinematicSound(audio, start);
+  setCinematicSoundLevel(audio, volume);
+  const startPlaybackTimers = () => {
+    const clipDuration = end - start;
+    const repeatCount = Math.max(1, clip.repeats || 1);
+    const totalDuration = clipDuration * repeatCount;
+    const timers = {
+      stop: window.setTimeout(() => stopCinematicSound(audio, start), (totalDuration + 0.12) * 1000),
+      fade: undefined,
+      replays: [],
+    };
+    for (let index = 1; index < repeatCount; index += 1) {
+      timers.replays.push(window.setTimeout(() => {
+        audio.currentTime = start;
+        setCinematicSoundLevel(audio, volume);
+        audio.play().catch(() => {});
+      }, clipDuration * index * 1000));
+    }
+    if (clip.fadeOut) {
+      timers.fade = window.setTimeout(() => setCinematicSoundLevel(audio, 0.0001, clip.fadeOut), (totalDuration - clip.fadeOut) * 1000);
+    }
+    cinematicSoundTimers.set(audio, timers);
+  };
+  const playback = audio.play();
+  if (playback?.then) playback.then(startPlaybackTimers).catch(() => {});
+  else startPlaybackTimers();
+}
+
+function stopAllCinematicSounds() {
+  Object.values(cinematicSoundClips).forEach(({ audio, start }) => stopCinematicSound(audio, start));
+}
 
 function renderData() {
   $('#homeNotices').innerHTML = notices.slice(0, 3).map(noticeItem).join('');
@@ -133,6 +245,7 @@ backdropVideo.addEventListener('loadeddata', () => {
 
 loginForm.addEventListener('submit', (event) => {
   event.preventDefault();
+  prepareCinematicAudio();
   const crewId = new FormData(loginForm).get('crewId').trim();
   const crewName = $('#crewName');
   if (crewName) crewName.textContent = crewId.toUpperCase() || 'COMMANDER';
@@ -197,8 +310,14 @@ function setBgmEnabled(enabled) {
   isBgmEnabled = enabled;
   updateBgmToggle();
   if (!mainBgm) return;
-  if (enabled) playMainBgm();
-  else mainBgm.pause();
+  if (enabled) {
+    prepareCinematicAudio();
+    playMainBgm();
+  }
+  else {
+    mainBgm.pause();
+    stopAllCinematicSounds();
+  }
 }
 
 bgmToggle?.addEventListener('click', () => setBgmEnabled(!isBgmEnabled));
@@ -219,10 +338,13 @@ function showMain() {
   playMainBgm();
   startBackgroundCycle();
   startHeroCarousel();
-  startRadioComms();
-  startAnalyzerBot();
-  startFleetFlyby();
-  startFighterFormation();
+  if (autoCinematicEffectsEnabled) {
+    startRadioComms();
+    startAnalyzerBot();
+    startFleetFlyby();
+    startFighterFormation();
+    scheduleNextCinematic(2600, 2600);
+  }
   window.scrollTo({ top: 0 });
 }
 
@@ -287,23 +409,54 @@ document.querySelectorAll('[data-carousel-index]').forEach((button) => {
 function startRadioComms() {
   if (radioStarted || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   radioStarted = true;
-  scheduleRadioPair(2600);
 }
 
 // 통신 카드는 표시되는 동안 애널라이저를 완전히 숨기므로, 비표시 시 화면을 자유롭게 횡단합니다.
+const cinematicEffects = [
+  { name: 'radio', ready: () => radioStarted, show: () => showRadioPair(), minDelay: 22000, maxDelay: 37000 },
+  { name: 'analyzer', ready: () => analyzerStarted, show: () => showAnalyzerBot(), minDelay: 8000, maxDelay: 22000 },
+  { name: 'fleet', ready: () => fleetFlybyStarted, show: () => showFleetFlyby(), minDelay: 6000, maxDelay: 18000 },
+  { name: 'fighters', ready: () => fighterFormationStarted, show: () => showFighterFormation(), minDelay: 5000, maxDelay: 16000 },
+];
+
+function scheduleNextCinematic(minDelayOverride, maxDelayOverride) {
+  window.clearTimeout(cinematicTimer);
+  const readyEffects = cinematicEffects.filter((effect) => effect.ready());
+  const preferredEffects = readyEffects.filter((effect) => effect.name !== lastCinematicEffect && effect.name !== activeAmbientEffect);
+  const choices = preferredEffects.length ? preferredEffects : readyEffects.filter((effect) => effect.name !== activeAmbientEffect);
+  if (!choices.length) return;
+
+  const nextEffect = choices[Math.floor(Math.random() * choices.length)];
+  const minDelay = minDelayOverride ?? nextEffect.minDelay;
+  const maxDelay = maxDelayOverride ?? nextEffect.maxDelay;
+  const delay = minDelay + Math.floor(Math.random() * (maxDelay - minDelay + 1));
+
+  cinematicTimer = window.setTimeout(() => {
+    if (activeAmbientEffect) {
+      // 현재 예약된 연출은 재시도하지 않고 건너뛴 뒤, 다른 후보를 새로 선택합니다.
+      lastCinematicEffect = nextEffect.name;
+      scheduleNextCinematic(3000, 7000);
+      return;
+    }
+    lastCinematicEffect = nextEffect.name;
+    nextEffect.show();
+    // 다음 후보 타이머는 현재 연출의 노출 중에도 독립적으로 흐릅니다.
+    scheduleNextCinematic();
+  }, delay);
+}
+
+function skipCinematicEffect(effectName) {
+  lastCinematicEffect = effectName;
+  scheduleNextCinematic(3000, 7000);
+}
+
 function startAnalyzerBot() {
   if (analyzerStarted || !analyzerBot || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   analyzerStarted = true;
 }
 
-function scheduleAnalyzerBot(delay) {
-  window.clearTimeout(analyzerTimer);
-  analyzerTimer = window.setTimeout(showAnalyzerBot, delay);
-}
-
 function hideAnalyzerBot() {
   if (!analyzerBot) return;
-  window.clearTimeout(analyzerTimer);
   window.clearTimeout(analyzerHideTimer);
   analyzerBot.classList.remove('is-dancing');
   if (activeAmbientEffect === 'analyzer') activeAmbientEffect = null;
@@ -312,10 +465,11 @@ function hideAnalyzerBot() {
 function showAnalyzerBot() {
   if (!analyzerBot || !analyzerStarted) return;
   if (activeAmbientEffect) {
-    scheduleAnalyzerBot(5000);
+    skipCinematicEffect('analyzer');
     return;
   }
   activeAmbientEffect = 'analyzer';
+  playCinematicSound('analyzer');
   const margin = 12;
   const maxX = Math.max(margin, window.innerWidth - analyzerBot.offsetWidth - margin);
   const maxY = Math.max(margin, window.innerHeight - analyzerBot.offsetHeight - margin);
@@ -342,23 +496,12 @@ function showAnalyzerBot() {
   analyzerHideTimer = window.setTimeout(() => {
     analyzerBot.classList.remove('is-dancing');
     activeAmbientEffect = null;
-    queueNextCinematicAfterAnalyzer();
   }, danceDuration + 240);
-}
-
-function queueNextCinematicAfterAnalyzer() {
-  if (fleetFlybyStarted) scheduleFleetFlyby(7000 + Math.floor(Math.random() * 12000));
-  else scheduleRadioPair(30000 + Math.floor(Math.random() * 20000));
 }
 
 function startFleetFlyby() {
   if (fleetFlybyStarted || !fleetFlyby || !fleetFlybyShip || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   fleetFlybyStarted = true;
-}
-
-function scheduleFleetFlyby(delay) {
-  window.clearTimeout(fleetFlybyTimer);
-  fleetFlybyTimer = window.setTimeout(showFleetFlyby, delay);
 }
 
 function randomFleetTop() {
@@ -372,11 +515,12 @@ function randomFleetTop() {
 function showFleetFlyby() {
   if (!fleetFlyby || !fleetFlybyShip || !fleetFlybyStarted) return;
   if (activeAmbientEffect) {
-    scheduleFleetFlyby(5000);
+    skipCinematicEffect('fleet');
     return;
   }
 
   activeAmbientEffect = 'fleet';
+  playCinematicSound('fleet');
   const ship = fleetShips[Math.floor(Math.random() * fleetShips.length)];
   const entersFromLeft = Math.random() < 0.5;
   const flybyDuration = 11000;
@@ -397,8 +541,6 @@ function showFleetFlyby() {
   fleetFlybyHideTimer = window.setTimeout(() => {
     fleetFlyby.classList.remove('is-flying');
     activeAmbientEffect = null;
-    if (fighterFormationStarted) scheduleFighterFormation(6000 + Math.floor(Math.random() * 11000));
-    else scheduleRadioPair(30000 + Math.floor(Math.random() * 20000));
   }, flybyDuration + 180);
 }
 
@@ -407,19 +549,15 @@ function startFighterFormation() {
   fighterFormationStarted = true;
 }
 
-function scheduleFighterFormation(delay) {
-  window.clearTimeout(fighterFormationTimer);
-  fighterFormationTimer = window.setTimeout(showFighterFormation, delay);
-}
-
 function showFighterFormation() {
   if (!fighterFormation || !fighterFormationStarted) return;
   if (activeAmbientEffect) {
-    scheduleFighterFormation(5000);
+    skipCinematicEffect('fighters');
     return;
   }
 
   activeAmbientEffect = 'fighters';
+  playCinematicSound('fighters');
   const count = 1 + Math.floor(Math.random() * 5);
   const model = fighterModels[Math.floor(Math.random() * fighterModels.length)];
   const entersFromLeft = Math.random() < 0.5;
@@ -462,13 +600,7 @@ function showFighterFormation() {
     fighterFormation.classList.remove('is-flying');
     fighterFormation.replaceChildren();
     activeAmbientEffect = null;
-    scheduleRadioPair(30000 + Math.floor(Math.random() * 20000));
   }, formationDuration + 180);
-}
-
-function scheduleRadioPair(delay) {
-  window.clearTimeout(radioTimer);
-  radioTimer = window.setTimeout(showRadioPair, delay);
 }
 
 function randomMessage(messages) {
@@ -507,15 +639,15 @@ function hideRadioPair() {
   radioCommsRival.setAttribute('aria-hidden', 'true');
   activeAmbientEffect = null;
   // 두 카드가 모두 사라진 뒤에만 다시 등장 대기열에 넣습니다.
-  if (analyzerStarted) scheduleAnalyzerBot(9000 + Math.floor(Math.random() * 16000));
 }
 
 function showRadioPair() {
   if (activeAmbientEffect) {
-    scheduleRadioPair(5000);
+    skipCinematicEffect('radio');
     return;
   }
   activeAmbientEffect = 'radio';
+  playCinematicSound('radio');
   const teamMessage = randomMessage(teamMessages);
   const rivalMessage = randomMessage(rivalMessages);
   const teamFirst = Math.random() < 0.5;
@@ -547,15 +679,61 @@ document.addEventListener('click', (event) => {
 });
 
 $('#shortcutDownload').addEventListener('click', () => {
-  const pageUrl = window.location.href;
-  const shortcut = `[InternetShortcut]\r\nURL=${pageUrl}\r\n`;
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([shortcut], { type: 'application/internet-shortcut' }));
-  link.download = 'Yamato Command Center.url';
-  link.click();
-  URL.revokeObjectURL(link.href);
-  showToast('바로가기 파일을 다운로드했습니다.');
+  openInstallDialog();
 });
+
+let deferredInstallPrompt = null;
+const installDialog = $('#installDialog');
+const installConfirm = $('#installConfirm');
+
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  installDialog?.close();
+  showToast('함대 관제 바로가기가 설치되었습니다.');
+});
+
+function openInstallDialog() {
+  if (isStandalone()) {
+    showToast('이미 바탕화면 바로가기로 실행 중입니다.');
+    return;
+  }
+  installDialog?.showModal();
+}
+
+$('#installDialogClose')?.addEventListener('click', () => installDialog?.close());
+installDialog?.addEventListener('click', (event) => {
+  if (event.target === installDialog) installDialog.close();
+});
+
+installConfirm?.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installDialog?.close();
+    showToast(outcome === 'accepted' ? '바탕화면 설치를 요청했습니다.' : '바로가기 설치를 취소했습니다.');
+    return;
+  }
+
+  installDialog?.close();
+  if (isIos()) {
+    showToast('Safari 공유 버튼 → “홈 화면에 추가”를 선택해 설치하세요.');
+    return;
+  }
+  showToast('브라우저 메뉴에서 “앱 설치” 또는 “홈 화면에 추가”를 선택하세요.');
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 
 $('#gameStart')?.addEventListener('click', () => {
   showToast('게임 시작 주소가 연결되면 바로 출격할 수 있습니다.');
